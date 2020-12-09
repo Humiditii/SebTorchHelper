@@ -42,7 +42,7 @@ import torchvision
 
 class SebTorchTrainer():
     """
-        A helper class for training <<<<<<<< Development stage {Beta version} >>>>>>>>>>>>>>
+        A helper class for training Image Classifier Neurals <<<<<<<< Development stage {Beta version} >>>>>>>>>>>>>>
     """
     def __init__(self, model):
         self.model = model
@@ -57,7 +57,12 @@ class SebTorchTrainer():
         
     def spliter(self, train_size, dataset):
         """
-        This method helps to split data randomly, by passing a float of the percentage of the training set
+            This method helps to split data randomly, by passing a float of the percentage of the training set
+            Parameters: \n
+                train_size: (float): fraction(percentage of traininig required), must be less than 1
+                dataset: whole dataset
+
+            returns: Train set and Validation set
         """
         train_size = float(train_size)
         from torch.utils.data import random_split
@@ -72,19 +77,30 @@ class SebTorchTrainer():
             
             return train_set, validation_Set
         
-    def prepare(self, train_bs=None, valid_bs=None, shuf_train=False, shuf_test=False, shuf_valid=False, train=True, validation=True, valid_set= None,train_set= None, train_split=None, dataset=None):
+    def prepare(self, valid_set,train_set, train_bs=3, valid_bs=3, shuf_train=False, shuf_test=False, shuf_valid=False):
         """
-        This method helps to prepare daata by converting them to batches
+            Converts data to batches for feeding to the Network \n
+            Parameters: \n
+                valid_set: Validation dataset
+                train_set: raining dataset
+                train_bs:(int) default is 3
+                valid_bs:(int) default is 3
+                shuf_train: default is False
+                            Helps to shuffle the train dataloader
+                shuf_test: default is False
+                            Helps to shuffle the test dataloader
+
+            returns: train_loader, valid_loader (Data in batches)
         """
         from torch.utils.data import DataLoader
         
-        if train_bs is None: train_bs = 3
-        if valid_bs is None: valid_bs = 3   
-        if test_bs is None: test_bs = 10
+        # if train_bs is None: train_bs = 3
+        # if valid_bs is None: valid_bs = 3   
+        # if test_bs is None: test_bs = 10
         
-        if train_set is None or valid_set is None and type(train_split)== 'float':
-            train_set,valid_set = self.spliter(train_split, dataset )
-        else: raise Exception('Train_split is probably not a float')
+        # if train_set is None or valid_set is None and type(train_split)== 'float':
+        #     train_set,valid_set = self.spliter(train_split, dataset )
+        # else: raise Exception('Train_split is probably not a float')
             
         train_loader = DataLoader(dataset=train_set, batch_size=train_bs, shuffle=shuf_train)
         valid_loader = DataLoader(dataset=valid_set, batch_size=valid_bs, shuffle=shuf_valid)
@@ -94,13 +110,24 @@ class SebTorchTrainer():
     
     def fit(self, epochs, train_batch, validation_batch, loss_func, metric, opt_func, lr):
         """
-        This is a fitter method that trains the model
+            Fits the model for training process \n
+            Parameters: \n
+                epochs: (int) Number of training cycle
+                train_batch: training data in batches
+                validation_batch: validation data in batches
+                loss_func: (function) Loss function for computing losses
+                metric: (function) For measuring accuracy
+                opt_func: (function) Optimization function 
+                lr:(float) Learning rate
+            
+            returns: training losses, training accuracies, validation losses , validation accuracies
         """
         opt = opt_func(self.model.parameters(), lr=lr)
         
         # train_batch = DeviceDataLoader(train_batch)
         # validation_batch = DeviceDataLoader(validation_batch)
 
+        ###### Checking for GPU or CPU #######
         if torch.cuda.is_available():
             train_batch.cuda()
             validation_batch.cuda()
@@ -108,6 +135,7 @@ class SebTorchTrainer():
             train_batch.cpu()
             validation_batch.cpu()
         
+        #<------------- Tracking results --------------------->
         train_losses, train_acces = [], []
 
         valid_losses , valid_acces = [], []
@@ -154,7 +182,7 @@ class SebTorchTrainer():
                     valid_loss += val_loss * len(xval)
                     batch_val += len(xval)              
 
-            #         calculate average metrics (losses, accuracies)
+            #<-------------------calculate average metrics (losses, accuracies)------------------>
             train_loss = train_loss/batch_train
             valid_loss = valid_loss/batch_val
             train_acc = train_acc/len(train_batch)
@@ -169,7 +197,17 @@ class SebTorchTrainer():
             print(' Epoch [{}/{}], training_loss: {:.4f}, training_acc: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}'.format( epoch+1, epochs, train_loss, train_acc, valid_loss, valid_acc ))
         return train_losses, train_acces, valid_losses , valid_acces
     
-    def evaluate(self, validation_batch, loss_func, valid_dl, metric):
+    def evaluate(self, validation_batch, loss_func, metric):
+        """
+            evaluates the model on unseen data \n
+            Parameters: \n
+                validation_batch: validation data in batches
+                loss_func: (function) Loss function for computing losses
+                metric: (function) For measuring accuracy
+               
+            
+            returns: validation accuracies, validation losses
+        """
         
         valid_acc = 0.0
         valid_loss = 0.0
@@ -193,7 +231,7 @@ class SebTorchTrainer():
 
         return {'Acc: {:.4f}, loss: {:.4f}'.format(valid_acc, valid_loss)}   
     
-# This trainer helper was built in a rush, it is open for modifications and still only implementation for classification, regression perspective loading...... 
+
 
 # Author: @Sebago
 # Mail: humiditii45@gmail.com
