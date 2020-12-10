@@ -44,8 +44,9 @@ class SebTorchTrainer():
     """
         A helper class for training Image Classifier Neurals <<<<<<<< Development stage {Beta version} >>>>>>>>>>>>>>
     """
-    def __init__(self, model):
+    def __init__(self, model, model_name):
         self.model = model
+        self.model_name = model_name
         import imp
         try:
             imp.find_module('torch')
@@ -54,6 +55,10 @@ class SebTorchTrainer():
             found = False
         
         if found is False: raise Exception('torch module not present')
+
+    def trainable_neurons(self):
+        neurons =  sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+        return '<<<<<<----Trainable neurons for {} Computer Vision Model : {} ---->>>>>'.format( self.model_name ,neurons)
         
     def spliter(self, train_size, dataset):
         """
@@ -126,14 +131,6 @@ class SebTorchTrainer():
         
         # train_batch = DeviceDataLoader(train_batch)
         # validation_batch = DeviceDataLoader(validation_batch)
-
-        ###### Checking for GPU or CPU #######
-        if torch.cuda.is_available():
-            train_batch.cuda()
-            validation_batch.cuda()
-        else:
-            train_batch.cpu()
-            validation_batch.cpu()
         
         #<------------- Tracking results --------------------->
         train_losses, train_acces = [], []
@@ -150,6 +147,14 @@ class SebTorchTrainer():
             batch_val = 0.0
 
             for xb, yb in train_batch:
+
+                #  ###### Checking for GPU or CPU #######
+                # if torch.cuda.is_available():
+                #     xb.cuda()
+                #     validation_batch.cuda()
+                # else:
+                #     train_batch.cpu()
+                #     validation_batch.cpu()
                 self.model.train()
                 # make predictions
                 preds = self.model(xb)
@@ -171,6 +176,7 @@ class SebTorchTrainer():
             # Validation accuracy
             with torch.no_grad():
                 for xval, yval in validation_batch:
+                
                     self.model.eval()
                     val_pred = self.model(xval)
 
