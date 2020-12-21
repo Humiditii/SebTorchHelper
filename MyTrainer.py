@@ -5,6 +5,7 @@
 
 import torch
 import torchvision
+from torch.optim.lr_scheduler import StepLR
 
 # class DeviceDataLoader():
 #     """
@@ -113,7 +114,7 @@ class SebTorchTrainer():
         return train_loader, valid_loader
         
     
-    def fit(self, epochs, train_batch, validation_batch, loss_func, metric, opt_func, lr):
+    def fit(self, epochs, train_batch, validation_batch, loss_func, metric, opt_func, lr, scheduler=False, step=1, gamma=0.1):
         """
             Fits the model for training process \n
             Parameters: \n
@@ -124,11 +125,17 @@ class SebTorchTrainer():
                 metric: (function) For measuring accuracy
                 opt_func: (function) Optimization function 
                 lr:(float) Learning rate
+                scheduler: default: (False) learning rate scheduler
+                step:(int) decay step after each epoch
+                gamma: (float) decaying constant i.e Lr_(t) = Lr_(t-1) * gamma 
             
             returns: training losses, training accuracies, validation losses , validation accuracies
         """
+        sch_lr = None
         opt = opt_func(self.model.parameters(), lr=lr)
-        
+        if scheduler == True:
+            sch_lr = StepLR(opt, step_size=step,gamma= gamma)
+
         # train_batch = DeviceDataLoader(train_batch)
         # validation_batch = DeviceDataLoader(validation_batch)
         
@@ -165,6 +172,10 @@ class SebTorchTrainer():
                 # update training parameters
                 opt.step()
                 # reset gradients to x=zero
+
+                #----------Decaying lr----------
+                if sch_lr is not None: sch_lr.step()
+                
                 opt.zero_grad()
                 train_loss += loss.item() * len(xb)
                 # validation on training
