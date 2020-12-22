@@ -139,6 +139,8 @@ class SebTorchTrainer():
         val_loss_memory = np.inf
         val_acc_memory = np.inf
         counter = []
+        checker = np.inf
+        val_checker = -np.inf
 
 
         sch_lr = None
@@ -223,36 +225,41 @@ class SebTorchTrainer():
 
             if checkpoint[0] == True and len(checkpoint[1]) == 1:
                 if valid_loss < val_loss_memory:
-                    print('Model saved at Epoch: {} watching by val_loss'.format(epoch))
-                    torch.save(self.model_name, 'model_at_epoch{}.pkl'.format(epoch))
+                    print('Model saved at Epoch: {} watching by val_loss'.format(epoch+1))
+                    torch.save(self.model_name, 'model_checkpoint.pkl')
                     val_loss_memory = valid_loss
             elif checkpoint[0] == True and len(checkpoint) == 2:
                 if checkpoint[1] == 'val_loss':
                     if valid_loss < val_loss_memory:
-                        print('Model saved at Epoch: {} watching by val_loss'.format(epoch))
-                        torch.save(self.model_name, 'model_at_epoch{}.pkl'.format(epoch))
+                        print('Model saved at Epoch: {} watching by val_loss'.format(epoch+1))
+                        torch.save(self.model_name, 'model_checkpoint.pkl')
                         val_loss_memory = valid_loss
                 elif checkpoint[1] == 'val_acc':
                     if val_acc > val_acc_memory:
-                        print('Model saved at Epoch: {} watching by val_acc'.format(epoch))
-                        torch.save(self.model_name, 'model_at_epoch{}.pkl'.format(epoch))
-                        val_acc_memory = valid_acc
+                        print('Model saved at Epoch: {} watching by val_acc'.format(epoch+1))
+                        torch.save(self.model_name, 'model_checkpoint.pkl')
+                        val_acc_memory = val_acc
             if patience[0] is not None and type(patience[0]) is not int: pass
             elif patience[0] is not None and type(patience[0]) is int:
                 if len(patience) == 1:
                     #using validation loss
-                    counter.append(val_loss)
-                    if len(counter) > patience[0]:
-                        break
+                    if checker < val_loss:
+                        counter.append(val_loss)
+                        checker = val_loss
+                        if len(counter) == int(patience[0]):
+                            break
                 elif len(patience) == 2:
                     if patience[1] == 'val_loss':
-                        counter.append(val_loss)
-                        if len(counter) > patience[0]:
-                            break
+                        if checker < val_loss:
+                            counter.append(val_loss)
+                            checker = val_loss
+                            if len(counter) == int(patience[0]):
+                                break
                         elif patience[1] == 'val_acc':
-                            counter.append(val_acc)
-                        if len(counter) > patience[0]:
-                            break
+                            if val_checker > val_acc:
+                                counter.append(val_acc)
+                                if len(counter) == int(patience[0]):
+                                    break
 
             print(' Epoch [{}/{}], training_loss: {:.4f}, training_acc: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}'.format( epoch+1, epochs, train_loss, train_acc, valid_loss, valid_acc ))
         return train_losses, train_acces, valid_losses , valid_acces
