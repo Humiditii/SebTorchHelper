@@ -126,6 +126,9 @@ class SebTorchTrainer():
                 metric: (function) For measuring accuracy
                 opt_func: (function) Optimization function 
                 lr:(float) Learning rate
+                patience: (List) : default: ([None, 'val_loss']), the first index of the list accept number of epoch patience to stop training,
+                the second index accept the criterion for the process, it could be 'val_loss' or 'val_acc'
+                checkpoint: (list): default: [True, 'val_loss']: the first index allows model checkpoints to be created, the second index accepts the criterion for checkpoint 'val_loss' or 'val_acc'
                 scheduler: default: (False) learning rate scheduler
                 step:(int) decay step after each epoch
                 gamma: (float) decaying constant i.e Lr_(t) = Lr_(t-1) * gamma 
@@ -283,8 +286,8 @@ class SebTorchTrainer():
                 valid_loss += val_loss * len(xval)
                 
            
-            valid_loss = valid_loss/len(validation_batch)
-            valid_acc = valid_acc/len(validation_batch)
+        valid_loss = valid_loss/len(validation_batch)
+        valid_acc = valid_acc/len(validation_batch)
 
         return {'Acc: {:.4f}, loss: {:.4f}'.format(valid_acc, valid_loss)}   
     
