@@ -5,6 +5,8 @@
 
 import torch
 import torchvision
+from torch.optim.lr_scheduler import StepLR
+import numpy as np
 
 # class DeviceDataLoader():
 #     """
@@ -113,7 +115,7 @@ class SebTorchTrainer():
         return train_loader, valid_loader
         
     
-    def fit(self, epochs, train_batch, validation_batch, loss_func, metric, opt_func, lr):
+    def fit(self, epochs, train_batch, validation_batch, loss_func, metric, opt_func, lr, patience=[None, 'val_loss'], checkpoint=[True, 'val_loss'], scheduler=False, step=1, gamma=0.1):
         """
             Fits the model for training process \n
             Parameters: \n
@@ -124,11 +126,26 @@ class SebTorchTrainer():
                 metric: (function) For measuring accuracy
                 opt_func: (function) Optimization function 
                 lr:(float) Learning rate
+                patience: (List) : default: ([None, 'val_loss']), the first index of the list accept number of epoch patience to stop training,
+                the second index accept the criterion for the process, it could be 'val_loss' or 'val_acc'
+                checkpoint: (list): default: [True, 'val_loss']: the first index allows model checkpoints to be created, the second index accepts the criterion for checkpoint 'val_loss' or 'val_acc'
+                scheduler: default: (False) learning rate scheduler
+                step:(int) decay step after each epoch
+                gamma: (float) decaying constant i.e Lr_(t) = Lr_(t-1) * gamma 
             
             returns: training losses, training accuracies, validation losses , validation accuracies
         """
+
+        val_loss_memory = np.inf
+        val_acc_memory = np.inf
+        counter = []
+
+
+        sch_lr = None
         opt = opt_func(self.model.parameters(), lr=lr)
-        
+        if scheduler == True:
+            sch_lr = StepLR(opt, step_size=step,gamma= gamma)
+
         # train_batch = DeviceDataLoader(train_batch)
         # validation_batch = DeviceDataLoader(validation_batch)
         
@@ -165,6 +182,10 @@ class SebTorchTrainer():
                 # update training parameters
                 opt.step()
                 # reset gradients to x=zero
+
+                #----------Decaying lr----------
+                if sch_lr is not None: sch_lr.step()
+                
                 opt.zero_grad()
                 train_loss += loss.item() * len(xb)
                 # validation on training
@@ -200,6 +221,39 @@ class SebTorchTrainer():
             valid_acces.append(valid_acc)
 
 
+            if checkpoint[0] == True and len(checkpoint[1]) == 1:
+                if valid_loss < val_loss_memory:
+                    print('Model saved at Epoch: {} watching by val_loss'.format(epoch))
+                    torch.save(self.model_name, 'model_at_epoch{}.pkl'.format(epoch))
+                    val_loss_memory = valid_loss
+            elif checkpoint[0] == True and len(checkpoint) == 2:
+                if checkpoint[1] == 'val_loss':
+                    if valid_loss < val_loss_memory:
+                        print('Model saved at Epoch: {} watching by val_loss'.format(epoch))
+                        torch.save(self.model_name, 'model_at_epoch{}.pkl'.format(epoch))
+                        val_loss_memory = valid_loss
+                elif checkpoint[1] == 'val_acc':
+                    if val_acc > val_acc_memory:
+                        print('Model saved at Epoch: {} watching by val_acc'.format(epoch))
+                        torch.save(self.model_name, 'model_at_epoch{}.pkl'.format(epoch))
+                        val_acc_memory = valid_acc
+            if patience[0] is not None and type(patience[0]) is not int: pass
+            elif patience[0] is not None and type(patience[0]) is int:
+                if len(patience) == 1:
+                    #using validation loss
+                    counter.append(val_loss)
+                    if len(counter) > patience[0]:
+                        break
+                elif len(patience) == 2:
+                    if patience[1] == 'val_loss':
+                        counter.append(val_loss)
+                        if len(counter) > patience[0]:
+                            break
+                        elif patience[1] == 'val_acc':
+                            counter.append(val_acc)
+                        if len(counter) > patience[0]:
+                            break
+
             print(' Epoch [{}/{}], training_loss: {:.4f}, training_acc: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}'.format( epoch+1, epochs, train_loss, train_acc, valid_loss, valid_acc ))
         return train_losses, train_acces, valid_losses , valid_acces
     
@@ -232,8 +286,8 @@ class SebTorchTrainer():
                 valid_loss += val_loss * len(xval)
                 
            
-            valid_loss = valid_loss/len(validation_batch)
-            valid_acc = valid_acc/len(validation_batch)
+        valid_loss = valid_loss/len(validation_batch)
+        valid_acc = valid_acc/len(validation_batch)
 
         return {'Acc: {:.4f}, loss: {:.4f}'.format(valid_acc, valid_loss)}   
     
